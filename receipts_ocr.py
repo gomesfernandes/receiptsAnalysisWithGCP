@@ -5,21 +5,26 @@ import json
 from google.cloud import vision
 from google.cloud import storage
 
+INPUT_BUCKET = 'receiptsocrcgfbucketimages'
+OUTPUT_BUCKET = 'receiptsocrcgfbucket'
+
 
 def fn_extract_json(event, context):
     """
     New receipt uploaded. Read the file, call vision API and save the json content to a new file.
     """
-    INPUT_BUCKET = "receiptsocrcgfbucketimages"
-    OUTPUT_BUCKET = "receiptsocrcgfbucket"
     filename = event['name']
+    if not re.search(r'\.jpe?g', filename):
+        print('File + ' + filename + ' is not an image')
 
     image_path = 'gs://{0}/{1}'.format(INPUT_BUCKET, filename)
     extracted_entities = detect_entities(image_path, True)
+    if not extracted_entities:
+        print('Nothing to extract from file ' + filename)
 
     client = storage.Client()
     bucket = client.get_bucket(OUTPUT_BUCKET)
-    blob = bucket.blob(filename.replace('.jpg', '.json'))
+    blob = bucket.blob(re.sub(r'\.jpe?g', '.json', filename))
     blob.upload_from_string(json.dumps(extracted_entities))
 
 
@@ -27,7 +32,6 @@ def detect_entities(path, gcs_source=False):
     """Detects text in the file."""
     client = vision.ImageAnnotatorClient()
 
-    response = None
     if gcs_source:
         image = vision.types.Image(source=vision.types.ImageSource(image_uri=path))
         response = client.text_detection(image=image)
@@ -118,17 +122,20 @@ def detect_entities(path, gcs_source=False):
     content["shop"] = fused_lines[0]['content']
 
     for line in fused_lines:
-        match = re.search(r'(\d{1,2})[/\-\.]([01]\d)[/\-\.](\d{2,4})', line['content'])
+        match = re.search(r'(\d{1,2})[/\-\.]([01]?\d)[/\-\.](\d{2,4})', line['content'])
         if match:
-            content["day"] = match.group(1)
-            content["month"] = match.group(2)
-            content["year"] = match.group(3)
+            day = match.group(1).rjust(2, '0')
+            month = match.group(2).rjust(2, '0')
+            year = match.group(3)
+            if len(year) == 2:
+                year = "20" + year
+            content["date"] = year + "-" + month + "-" + day
             break
 
     for i, line in enumerate(fused_lines):
         if ('total' in line['content'].lower()) or ('tota7' in line['content'].lower()) or (
                 'espèces' in line['content'].lower()):
-            match = re.search(r'(\d+)[\.,]\s{0,1}(\d\d)\s*€{0,1}', line['content'])
+            match = re.search(r'(\d+)[\.,]\s?(\d\d)\s*€?', line['content'])
             if match:
                 content["total"] = float(match.group(1) + '.' + match.group(2))
                 break

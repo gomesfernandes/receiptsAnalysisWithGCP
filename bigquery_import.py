@@ -22,13 +22,9 @@ def run():
     table_schema = {
         'fields': [
             {
-                'name': 'shop', 'type': 'FLOAT', 'mode': 'NULLABLE'
+                'name': 'shop', 'type': 'STRING', 'mode': 'NULLABLE'
             }, {
-                'name': 'day', 'type': 'STRING', 'mode': 'NULLABLE'
-            }, {
-                'name': 'month', 'type': 'STRING', 'mode': 'NULLABLE'
-            }, {
-                'name': 'year', 'type': 'STRING', 'mode': 'NULLABLE'
+                'name': 'date', 'type': 'DATE', 'mode': 'NULLABLE'
             }, {
                 'name': 'total', 'type': 'FLOAT', 'mode': 'NULLABLE'
             }
