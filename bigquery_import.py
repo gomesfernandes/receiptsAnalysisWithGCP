@@ -17,7 +17,7 @@ def run():
 
     p = beam.Pipeline(argv=argv)
     table_spec = 'covid-1:receipts.receipts'
-    input = 'gs://{0}/ocr_results/*.json'.format(BUCKET)
+    input = 'gs://{0}/*.json'.format(BUCKET)
 
     table_schema = {
         'fields': [
