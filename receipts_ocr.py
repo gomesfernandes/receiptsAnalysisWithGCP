@@ -1,17 +1,42 @@
 import io
 import glob
 import re
+import json
 from google.cloud import vision
+from google.cloud import storage
 
 
-def detect_entities(path):
+def fn_extract_json(event, context):
+    """
+    New receipt uploaded. Read the file, call vision API and save the json content to a new file.
+    """
+    INPUT_BUCKET = "receiptsocrcgfbucketimages"
+    OUTPUT_BUCKET = "receiptsocrcgfbucket"
+    filename = event['name']
+
+    image_path = 'gs://{0}/{1}'.format(INPUT_BUCKET, filename)
+    extracted_entities = detect_entities(image_path, True)
+
+    client = storage.Client()
+    bucket = client.get_bucket(OUTPUT_BUCKET)
+    blob = bucket.blob(filename.replace('.jpg', '.json'))
+    blob.upload_from_string(json.dumps(extracted_entities))
+
+
+def detect_entities(path, gcs_source=False):
     """Detects text in the file."""
     client = vision.ImageAnnotatorClient()
-    with io.open(path, 'rb') as image_file:
-        content = image_file.read()
 
-    image = vision.types.Image(content=content)
-    response = client.text_detection(image=image)
+    response = None
+    if gcs_source:
+        image = vision.types.Image(source=vision.types.ImageSource(image_uri=path))
+        response = client.text_detection(image=image)
+    else:
+        with io.open(path, 'rb') as image_file:
+            content = image_file.read()
+        image = vision.types.Image(content=content)
+        response = client.text_detection(image=image)
+
     data = response.full_text_annotation
 
     page = data.pages[0]
