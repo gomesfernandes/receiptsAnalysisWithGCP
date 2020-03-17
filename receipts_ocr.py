@@ -3,8 +3,6 @@ import glob
 import re
 from google.cloud import vision
 
-vision_client = vision.ImageAnnotatorClient()
-
 
 def detect_entities(path):
     """Detects text in the file."""
@@ -56,7 +54,7 @@ def detect_entities(path):
                 )
 
     if len(lines) == 0:
-        return
+        return None
 
     fused_lines = []
     for line in lines:
@@ -89,7 +87,7 @@ def detect_entities(path):
             fused_lines.append(line_info)
 
     if len(fused_lines) == 0:
-        return
+        return None
 
     content = dict()
     content["shop"] = fused_lines[0]['content']
@@ -100,21 +98,20 @@ def detect_entities(path):
             content["day"] = match.group(1)
             content["month"] = match.group(2)
             content["year"] = match.group(3)
-            content["datestring"] = match.group(0)
             break
 
     for i, line in enumerate(fused_lines):
         if ('total' in line['content'].lower()) or ('tota7' in line['content'].lower()) or (
                 'espèces' in line['content'].lower()):
-            match = re.search(r'\d+[\.,]\s{0,1}\d\d\s*€{0,1}', line['content'])
+            match = re.search(r'(\d+)[\.,]\s{0,1}(\d\d)\s*€{0,1}', line['content'])
             if match:
-                content["totalstring"] = match.group(0)
+                content["total"] = float(match.group(1) + '.' + match.group(2))
                 break
 
-    print(content)
+    return content
 
 
 if __name__ == '__main__':
     files = glob.glob('personal_receipts/*.jpg')
     for f in files:
-        detect_entities(f)
+        print(detect_entities(f))
