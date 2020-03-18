@@ -4,7 +4,10 @@ import re
 import json
 from google.cloud import vision
 from google.cloud import storage
+from google.cloud import pubsub_v1
 
+PROJECT_ID = 'covid-1'
+TOPIC = 'new_receipt_in_json_format'
 INPUT_BUCKET = 'receiptsocrcgfbucketimages'
 OUTPUT_BUCKET = 'receiptsocrcgfbucket'
 
@@ -24,8 +27,12 @@ def fn_extract_json(event, context):
 
     client = storage.Client()
     bucket = client.get_bucket(OUTPUT_BUCKET)
+    json_filename = re.sub(r'\.jpe?g', '.json', filename)
     blob = bucket.blob(re.sub(r'\.jpe?g', '.json', filename))
     blob.upload_from_string(json.dumps(extracted_entities))
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(PROJECT_ID, TOPIC)
+    publisher.publish(topic_path, data=json_filename.encode('utf-8'))
 
 
 def detect_entities(path, gcs_source=False):
